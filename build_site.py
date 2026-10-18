@@ -1,11 +1,13 @@
 import csv
 import html
 import os
+import shutil
 from pathlib import Path
 
 from grades import average, grade
 
-OUTPUT_DIR = Path("_site")
+BASE_DIR = Path(__file__).resolve().parent
+OUTPUT_DIR = BASE_DIR / "_site"
 
 
 def load_scores(csv_path):
@@ -15,56 +17,123 @@ def load_scores(csv_path):
 
 
 def render_html(rows, title):
-    """Render a simple HTML results page."""
+    """Render a styled HTML results page."""
     if not rows:
         raise ValueError("At least one score is required")
+
     table_rows = "\n".join(
-        f"<tr><td>{html.escape(name)}</td><td>{score}</td>"
-        f"<td>{grade(score)}</td></tr>"
-        for name, score in rows
+        f"<tr>"
+        f"<td>{idx:02d}</td>"
+        f"<td>{html.escape(name)}</td>"
+        f"<td>{score}</td>"
+        f"<td><span class=\"grade-tag\">{grade(score)}</span></td>"
+        f"</tr>"
+        for idx, (name, score) in enumerate(rows, 1)
     )
-    avg = average([score for _, score in rows])
+
+    scores = [score for _, score in rows]
+    total_students = len(scores)
+    avg_score = average(scores)
+    max_score = max(scores)
+    passed_students = sum(1 for s in scores if s >= 50)
     safe_title = html.escape(title)
+
     return f"""<!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{safe_title}</title>
-<style>
-body {{ font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 18px; color: #202938; }}
-h1 {{ color: #174ea6; }}
-table {{ border-collapse: collapse; width: 100%; margin-top: 20px; }}
-th, td {{ border: 1px solid #d7deea; padding: 12px; text-align: left; }}
-th {{ background: #eaf1ff; }}
-.summary {{ margin-top: 18px; padding: 14px; background: #f2f7f2; border-radius: 8px; }}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{safe_title}</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<h1>{safe_title}</h1>
-<p>ตารางแสดงคะแนนและเกรดของนักเรียน</p>
-<table>
-<thead><tr><th>ชื่อ</th><th>คะแนน</th><th>เกรด</th></tr></thead>
-<tbody>
-{table_rows}
-</tbody>
-</table>
-<p class="summary">ค่าเฉลี่ยคะแนน: {avg}</p>
+
+  <header>
+    <div class="nav-container">
+      <a href="#" class="logo">67160313 <span>/ SCORE LAB &#10035;</span></a>
+      <nav>
+        <a href="#results">ผลคะแนน</a>
+        <a href="https://github.com/67160313-hub/hello-python-cicd" target="_blank">GitHub &#8599;</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <span class="badge">PYTHON · CI/CD · GITHUB PAGES</span>
+      <h1>รายงานผลคะแนน <span>ที่อ่านสนุกขึ้น &#10035;</span></h1>
+      <p>ไฟล์ CSV หนึ่งไฟล์ กลายเป็นหน้ารายงานที่ดูง่าย พร้อมการตรวจโค้ดและเผยแพร่อัตโนมัติผ่าน GitHub Actions</p>
+    </section>
+
+    <section class="stats-grid">
+      <div class="stat-card">
+        <span class="icon">&#10035;</span>
+        <p>ผู้เรียนในตัวอย่าง</p>
+        <h3>{total_students} <small style="font-size: 1rem;">คน</small></h3>
+      </div>
+      <div class="stat-card">
+        <span class="icon">&#8599;</span>
+        <p>คะแนนเฉลี่ย</p>
+        <h3>{avg_score:.2f}</h3>
+      </div>
+      <div class="stat-card">
+        <span class="icon">&#9733;</span>
+        <p>คะแนนสูงสุด</p>
+        <h3>{max_score}</h3>
+      </div>
+      <div class="stat-card">
+        <span class="icon">&#10003;</span>
+        <p>ผ่านเกณฑ์</p>
+        <h3>{passed_students} <small style="font-size: 1rem;">คน</small></h3>
+      </div>
+    </section>
+
+    <section class="table-section" id="results">
+      <div class="section-title">
+        <h2>ตารางผลคะแนนตัวอย่าง</h2>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>ลำดับ</th>
+            <th>ชื่อ</th>
+            <th>คะแนน</th>
+            <th>เกรด</th>
+          </tr>
+        </thead>
+        <tbody>
+          {table_rows}
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 67160313 · PYTHON CI/CD LAB &#10035;</p>
+  </footer>
+
 </body>
 </html>
 """
 
 
 def main():
-    """Build the static website from the CSV file."""
-    title = os.environ.get("SITE_TITLE") or "ผลคะแนนวิชา CI/CD"
-    rows = load_scores("data/scores.csv")
-    OUTPUT_DIR.mkdir(exist_ok=True)
-    (OUTPUT_DIR / "index.html").write_text(
-        render_html(rows, title),
-        encoding="utf-8",
-    )
-    print(f"Built {OUTPUT_DIR / 'index.html'} ({len(rows)} students)")
+    csv_path = BASE_DIR / "data" / "scores.csv"
+    if not csv_path.exists():
+        csv_path = BASE_DIR / "scores.csv"
+
+    rows = load_scores(csv_path)
+    html_output = render_html(rows, "Python CI/CD - Score Report")
+
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    (OUTPUT_DIR / "index.html").write_text(html_output, encoding="utf-8")
+
+    # ก๊อปปี้ไฟล์ style.css ไปไว้ที่โฟลเดอร์ _site
+    css_src = BASE_DIR / "style.css"
+    if css_src.exists():
+        shutil.copy(css_src, OUTPUT_DIR / "style.css")
+
+    print("Site generated successfully in _site/index.html")
 
 
 if __name__ == "__main__":
