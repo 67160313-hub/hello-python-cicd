@@ -1,6 +1,5 @@
 import csv
 import html
-import os
 import shutil
 from pathlib import Path
 
@@ -128,7 +127,6 @@ def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUTPUT_DIR / "index.html").write_text(html_output, encoding="utf-8")
 
-    # ก๊อปปี้ไฟล์ style.css ไปไว้ที่โฟลเดอร์ _site
     css_src = BASE_DIR / "style.css"
     if css_src.exists():
         shutil.copy(css_src, OUTPUT_DIR / "style.css")
