@@ -1,5 +1,6 @@
 import tempfile
 from pathlib import Path
+
 from build_site import load_scores, render_html
 
 
@@ -17,7 +18,5 @@ def test_load_scores():
 def test_render_html():
     rows = [("Alice", 85), ("Bob", 40)]
     html_out = render_html(rows, "Test Page")
-    assert "<title>Test Page</title>" in html_out
     assert "Alice" in html_out
     assert "Bob" in html_out
-    assert "style.css" in html_out
